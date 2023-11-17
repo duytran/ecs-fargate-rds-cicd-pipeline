@@ -1,0 +1,2 @@
+PROJECT_NAME = "Vulture"
+CONTAINER_PORT = 80
