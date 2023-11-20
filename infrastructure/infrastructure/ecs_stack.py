@@ -1,8 +1,10 @@
-from aws_cdk import Stack, Duration
+from aws_cdk import Stack, Duration, RemovalPolicy
 from aws_cdk import aws_ecs as ecs
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_logs as logs
 
 from constructs import Construct
 
@@ -14,39 +16,39 @@ class ElasticContainerStack(Stack):
         super().__init__(scope, construct_id)
 
         # ----------------------------------------------------------------------
-        # Create ECS Cluster
-        self.cluster = ecs.Cluster(
+        # Create Security group for Application load balancer
+        self.alb_sg = ec2.SecurityGroup(
             self,
-            f"{PROJECT_NAME}-Cluster",
+            f"{PROJECT_NAME}-Security-Group-Load-Balancer",
             vpc=kwargs["vpc"],
-            cluster_name=f"{PROJECT_NAME}-Cluster",
-            container_insights=True,
+            allow_all_outbound=True,
+            description="Security Group created by CDK examples repo",
+            security_group_name="ecs-cdk-alb",
         )
 
-        # # ----------------------------------------------------------------------
-        # # Create Security group for Application load balancer
-        # self.alb_sg = ec2.SecurityGroup(
-        #     self,
-        #     f"{PROJECT_NAME}-Security-Group-Load-Balancer",
-        #     vpc=kwargs["vpc"],
-        #     allow_all_outbound=True,
-        # )
+        self.alb_sg.add_ingress_rule(
+            peer=ec2.Peer.any_ipv4(), connection=ec2.Port.tcp(CONTAINER_PORT)
+        )
 
-        # self.alb_sg.add_ingress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(CONTAINER_PORT))
+        # ----------------------------------------------------------------------
+        # Create Application load balancer
+        self.alb = elbv2.ApplicationLoadBalancer(
+            self,
+            f"{PROJECT_NAME}-Ecs-Alb",
+            vpc=kwargs["vpc"],
+            load_balancer_name=f"{PROJECT_NAME}-Ecs-Alb",
+            internet_facing=True,
+            security_group=self.alb_sg,
+        )
 
-        # # ----------------------------------------------------------------------
-        # # Create Application load balancer
-        # self.load_balancer = elbv2.ApplicationLoadBalancer(
-        #     self,
-        #     f"{PROJECT_NAME}-Ecs-Alb",
-        #     vpc=kwargs["vpc"],
-        #     load_balancer_name=f"{PROJECT_NAME}-Ecs-Alb",
-        #     internet_facing=True,
-        #     idle_timeout=Duration.minutes(10),
-        #     security_group=self.alb_sg,
-        #     http2_enabled=False,
-        #     deletion_protection=False,
-        # )
+        # Default target group
+        fargate_tg = elbv2.ApplicationTargetGroup(
+            self,
+            f"{PROJECT_NAME}-Default-Target-Group",
+            port=CONTAINER_PORT,
+            protocol=elbv2.ApplicationProtocol.HTTP,
+            vpc=kwargs["vpc"],
+        )
 
         # # Load balancer add listener
         # self.http_listener = self.load_balancer.add_listener(
@@ -62,6 +64,16 @@ class ElasticContainerStack(Stack):
         #     protocol=elbv2.ApplicationProtocol.HTTP,
         #     protocol_version=elbv2.ApplicationProtocolVersion.HTTP1,
         # )
+
+        # ----------------------------------------------------------------------
+        # Create ECS Cluster
+        self.cluster = ecs.Cluster(
+            self,
+            f"{PROJECT_NAME}-Cluster",
+            vpc=kwargs["vpc"],
+            cluster_name=f"{PROJECT_NAME}-Cluster",
+            container_insights=True,
+        )
 
         # ----------------------------------------------------------------------
         # Create task defination
@@ -80,7 +92,13 @@ class ElasticContainerStack(Stack):
             image=ecs.EcrImage.from_ecr_repository(kwargs["repository"]),
         )
 
-        self.container.add_port_mappings(ecs.PortMapping(container_port=CONTAINER_PORT))
+        self.container.add_port_mappings(
+            ecs.PortMapping(
+                container_port=CONTAINER_PORT,
+                host_port=CONTAINER_PORT,
+                protocol=ecs.Protocol.TCP,
+            )
+        )
 
         # self.http_sg = ec2.SecurityGroup(
         #     self, f"{PROJECT_NAME}-Security-Group-Http", vpc=kwargs["vpc"]
@@ -103,6 +121,14 @@ class ElasticContainerStack(Stack):
             task_definition=self.task_defination,
             # security_groups=[self.http_sg],
             desired_count=1,
+        )
+
+        alb_listener = self.alb.add_listener(
+            "Listener", port=CONTAINER_PORT, open=False, protocol=elbv2.Protocol.HTTP
+        )
+
+        alb_listener.add_targets(
+            "ECS", port=CONTAINER_PORT, targets=[self.fargate_service]
         )
 
         # self.target_group.add_target(self.fargate_service)
