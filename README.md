@@ -1,0 +1,2 @@
+* [https://exanubes.com/blog/ecs-fargate-deployment](https://exanubes.com/blog/ecs-fargate-deployment)
+* [https://gist.github.com/btotharye/3f2a804627578f9892bd77554c1d062c](https://gist.github.com/btotharye/3f2a804627578f9892bd77554c1d062c)
