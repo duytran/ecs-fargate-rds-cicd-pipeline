@@ -3,7 +3,7 @@ from aws_cdk import aws_ec2 as ec2
 
 from constructs import Construct
 
-from infrastructure.config import PROJECT_NAME
+from src.config import PROJECT_NAME
 
 
 class VpcStack(Stack):

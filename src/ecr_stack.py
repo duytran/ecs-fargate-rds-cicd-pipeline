@@ -2,7 +2,7 @@ from aws_cdk import Stack, RemovalPolicy
 from aws_cdk import aws_ecr as ecr
 from constructs import Construct
 
-from infrastructure.config import PROJECT_NAME
+from src.config import PROJECT_NAME
 
 
 class EcrStack(Stack):

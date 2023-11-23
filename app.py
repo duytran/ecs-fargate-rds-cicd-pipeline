@@ -3,10 +3,10 @@ import os
 
 import aws_cdk as cdk
 
-from infrastructure.ecr_stack import EcrStack
-from infrastructure.vpc_stack import VpcStack
-from infrastructure.ecs_stack import ElasticContainerStack
-from infrastructure.cicd_stack import CiCdStack
+from src.ecr_stack import EcrStack
+from src.vpc_stack import VpcStack
+from src.ecs_stack import ElasticContainerStack
+from src.cicd_stack import CiCdStack
 
 app = cdk.App()
 ecr = EcrStack(app, EcrStack.__name__)

@@ -8,7 +8,7 @@ from aws_cdk import aws_logs as logs
 
 from constructs import Construct
 
-from infrastructure.config import PROJECT_NAME, CONTAINER_PORT
+from src.config import PROJECT_NAME, CONTAINER_PORT
 
 
 class ElasticContainerStack(Stack):
